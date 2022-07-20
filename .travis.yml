@@ -1,0 +1,72 @@
+group: container
+
+stages:
+  - name: verify
+    if: type = push OR type = pull_request
+  - name: deploy com
+    if: type = push AND branch = master
+  - name: deploy pre
+    if: type = push AND branch = master
+  - name: deploy rev
+    if: type = pull_request
+  - name: deploy pro
+    if: type = push AND branch = master
+  
+jobs:
+  include:
+    - stage: verify
+      name: Check formatting
+      install: &install_terraform
+        - ./scripts/install_terraform.sh
+      script:
+        - terraform fmt -check -recursive
+    - &verify_plan
+      stage: verify
+      name: Build a plan of common infrastructure
+      install: *install_terraform
+      script:
+        - cd infrastructure/environments/${ENVIRONMENT}
+        - terraform init && terraform plan
+      env:
+        - ENVIRONMENT=com
+    - <<: *verify_plan
+      name: Verify a plan of pre-production infrastructure
+      env:
+        - ENVIRONMENT=pre
+    - <<: *verify_plan
+      name: Verify a plan of review infrastructure
+      env:
+        - ENVIRONMENT=rev
+    - <<: *verify_plan
+      name: Verify a plan of production infrastructure
+      env:
+        - ENVIRONMENT=pro
+
+    - &deploy
+      stage: deploy com
+      name: Deploy common infrastructure
+      install: *install_terraform
+      script:
+        - cd infrastructure/environments/${ENVIRONMENT}
+        - terraform init && terraform apply -auto-approve
+      env:
+        - ENVIRONMENT=com
+    - <<: *deploy
+      stage: deploy rev
+      name: Deploy pre-production infrastructure
+      script:
+        - cd infrastructure/environments/${ENVIRONMENT}
+        - terraform init && (terraform workspace new ${TRAVIS_PULL_REQUEST_BRANCH} || terraform workspace switch ${TRAVIS_PULL_REQUEST_BRANCH}) && terraform apply -auto-approve
+      env:
+        - ENVIRONMENT=pre
+    - <<: *deploy
+      stage: deploy rev
+      name: Deploy review infrastructure
+      env:
+        - ENVIRONMENT=rev
+    - <<: *deploy
+      stage: deploy pro
+      name: Deploy production infrastructure
+      env:
+        - ENVIRONMENT=pro
+
