@@ -2,7 +2,7 @@
 
 # Description
 
-The repository shows how Terraform project can be structured. For more visit the blog article - 
+The repository shows how Terraform project can be structured. For more visit the blog article - https://medium.com/schibsted-engineering/ultimate-terraform-project-structure-9fc7e79f6bc6
 
 # Usage
 
